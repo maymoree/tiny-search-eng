@@ -1,0 +1,141 @@
+ml () {  module ml "$@"
+}
+module () {  _module_raw "$@" 2>&1
+}
+_module_raw () {  eval `/usr/bin/tclsh8.6 /usr/lib/x86_64-linux-gnu/modulecmd.tcl bash "$@"`;
+ _mlstatus=$?;
+ return $_mlstatus
+}
+# Memo Tangtipongkul
+# Fall 2023
+# Testing querier.c
+
+#!/bin/bash
+
+pagedir="./letters-2"
+indexfile="./letters-2.index"
+
+# Invalid Test Cases
+# Testing Error Cases 
+# ----------------------------------------- 
+
+# Error Test Case 1: no arguments"
+./querier
+Usage: ./querier [pageDirectory] [indexFilename]
+# -----------------------------------------
+
+# "Error Test Case 2: invalid pagedir"
+./querier invalid $indexfile
+Invalid in parseArg: cannot read pageDirectory/.crawler
+# ----------------------------------------- 
+
+# "Error Test Case 3: invalid indexFilename"
+./querier $pagedir invalid
+Invalid in parseArg: unable to read indexFilename
+# -----------------------------------------
+
+# "Error Test Case 4: blank query"
+./querier $pagedir $indexfile <<< "        "
+Query? 
+Query? 
+# -----------------------------------------
+
+# "Error Test Case 5: invalid operators"
+./querier $pagedir $indexfile <<< "and for or first"
+Invalid in checkQuery: cannot begin with and / or
+Query? 
+Query? 
+# -----------------------------------------
+
+# "Error Test Case 6: invalid operators"
+./querier $pagedir $indexfile <<< "for and or first"
+Invalid in checkQuery: cannot have two and / or in a row
+Query? 
+Query? 
+# -----------------------------------------
+
+# "Error Test Case 7: invalid operators"
+./querier $pagedir $indexfile <<< " for or first and   "
+Invalid in checkQuery: cannot end with and / or
+Query? 
+Query? 
+# -----------------------------------------
+
+# "Error Test Case 8: invalid query (bad chars)"
+./querier $pagedir $indexfile <<< "    home or 293847928!!!   "
+Query? 
+Invalid in takeQuery: query cannot be tokenized
+Query? 
+# -----------------------------------------
+
+# "Error Test Case 9: nonexistent word in <andsequence>"
+./querier $pagedir $indexfile <<< "memo and computer"
+Query? 
+Query: memo and computer 
+No documents match.
+-----------------------------------------------
+Query? 
+# -----------------------------------------
+
+# "Testing Valid Cases"
+# -----------------------------------------
+
+# "Valid Test Case 1: single word"
+./querier $pagedir $indexfile <<< "home"
+Query? 
+Query: home 
+Matches 3 documents (ranked):
+score   2 doc   1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+score   1 doc   2: http://cs50tse.cs.dartmouth.edu/tse/letters/A.html
+score   1 doc   3: http://cs50tse.cs.dartmouth.edu/tse/letters/B.html
+-----------------------------------------------
+Query? 
+# -----------------------------------------
+
+# "Valid Test Case 2: nonexistent word in <orsequence>"
+./querier $pagedir $indexfile <<< "for or memo"
+Query? 
+Query: for or memo 
+Matches 3 documents (ranked):
+score   1 doc   1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+score   1 doc   2: http://cs50tse.cs.dartmouth.edu/tse/letters/A.html
+score   1 doc   3: http://cs50tse.cs.dartmouth.edu/tse/letters/B.html
+-----------------------------------------------
+Query? 
+# -----------------------------------------
+
+# "Valid Test Case 3: <andsequence> with valid words"
+./querier $pagedir $indexfile <<< "home and this"
+Query? 
+Query: home and this 
+Matches 1 documents (ranked):
+score   1 doc   1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+-----------------------------------------------
+Query? 
+# -----------------------------------------
+
+# "Valid Test Case 4: sequence of valid words (with valgrind)"
+valgrind --leak-check=full --show-leak-kinds=all ./querier $pagedir $indexfile <<< "home this or search algorithm"
+==1631196== Memcheck, a memory error detector
+==1631196== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==1631196== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
+==1631196== Command: ./querier ./letters-2 ./letters-2.index
+==1631196== 
+Query? 
+Query: home this or search algorithm 
+Matches 1 documents (ranked):
+score   1 doc   1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+-----------------------------------------------
+Query? 
+==1631196== 
+==1631196== HEAP SUMMARY:
+==1631196==     in use at exit: 0 bytes in 0 blocks
+==1631196==   total heap usage: 106 allocs, 106 frees, 33,340 bytes allocated
+==1631196== 
+==1631196== All heap blocks were freed -- no leaks are possible
+==1631196== 
+==1631196== For lists of detected and suppressed errors, rerun with: -s
+==1631196== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+# -----------------------------------------
+
+exit 0
